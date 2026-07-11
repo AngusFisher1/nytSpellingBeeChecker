@@ -125,3 +125,6 @@ the same doubled-word cleanup as before.
   step in case you ever do paste that way.
 - If NYT ever changes the puzzle URL, add it to `matches` and
   `host_permissions` in `manifest.json`.
+
+  ##Screenshot
+  ![New York Times Spelling Bee Puzzle with Side Panel Extension which shows users their progress in real time](Screenshot.png)

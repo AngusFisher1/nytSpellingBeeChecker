@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spelling Bee Tracker</title>
+<style>
+:root {
+    /* brand */
+    --honey: #F7DA21;
+    --honey-deep: #EAB308;
+    --amber-ink: #A8791A;
+ 
+    /* surface + ink */
+    --paper: #F4EEDF;
+    --panel: #FFFDF7;
+    --ink: #1C1810;
+    --line: #E7DEC8;
+    --muted: #8C8368;
+    --found: #C3B79A;
+ 
+    /* signal */
+    --live: #3F8F5B;
+    --warn: #B23A2E;
+    --warn-bg: #F7E7E2;
+ 
+    /* depth */
+    --shadow-sm: 0 1px 2px rgba(28, 24, 16, 0.05);
+    --shadow-md: 0 6px 18px -8px rgba(28, 24, 16, 0.22), 0 1px 2px rgba(28, 24, 16, 0.05);
+    --shadow-honey: 0 0 0 1px rgba(234, 179, 8, 0.28), 0 6px 20px -8px rgba(234, 179, 8, 0.45);
+ 
+    /* type: one family, sans + mono, no serif */
+    --display: "Geist", -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif;
+    --sans: "Geist", -apple-system, "SF Pro Text", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", "SFMono-Regular", Menlo, monospace;
+ 
+    --r-lg: 12px;
+    --r-md: 9px;
+    --r-sm: 6px;
+  }
+ 
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #15120B;
+      --panel: #201B12;
+      --ink: #F3ECDB;
+      --line: #342B1C;
+      --muted: #9A9078;
+      --found: #6E6449;
+      --amber-ink: #F0C33C;
+      --live: #5FB47F;
+      --warn: #E48072;
+      --warn-bg: #3A241F;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 8px 22px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.02);
+      --shadow-honey: 0 0 0 1px rgba(247, 218, 33, 0.35), 0 8px 24px -10px rgba(247, 218, 33, 0.35);
+    }
+  }
+ 
+  * { box-sizing: border-box; }
+ 
+  body {
+    margin: 0 auto;
+    max-width: 460px;
+    background:
+      radial-gradient(120% 90% at 100% 0%, rgba(247, 218, 33, 0.10), transparent 55%),
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.45;
+    letter-spacing: -0.006em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+ 
+  /* ---------- header band ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: -16px -16px 0;
+    padding: 18px 16px 12px;
+    position: relative;
+    background:
+      radial-gradient(60% 140% at 14px 18px, rgba(247, 218, 33, 0.22), transparent 60%);
+    border-bottom: 1px solid var(--line);
+  }
+  .hex-mark {
+    width: 18px; height: 20px; flex-shrink: 0;
+    background: linear-gradient(155deg, var(--honey) 0%, var(--honey-deep) 100%);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    filter: drop-shadow(0 2px 5px rgba(234, 179, 8, 0.5));
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    margin: 0;
+  }
+ 
+  .live-status {
+    font-size: 11px;
+    color: var(--muted);
+    margin: 12px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.003em;
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0;
+    position: relative;
+  }
+  .dot.live { background: var(--live); }
+  .dot.live::after {
+    content: "";
+    position: absolute; inset: -4px;
+    border-radius: 50%;
+    border: 1.5px solid var(--live);
+    opacity: 0;
+    animation: pulse 2.4s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(0.6); opacity: 0.55; }
+    70%  { transform: scale(1.6); opacity: 0; }
+    100% { opacity: 0; }
+  }
+ 
+  #syncNowBtn {
+    margin-left: auto;
+    padding: 4px 11px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: transparent;
+    color: var(--amber-ink);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    box-shadow: none;
+  }
+  #syncNowBtn:hover {
+    border-color: var(--honey-deep);
+    background: rgba(247, 218, 33, 0.10);
+    opacity: 1;
+  }
+ 
+  /* ---------- manual paste ---------- */
+  details.manual {
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--panel);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  details.manual summary {
+    cursor: pointer;
+    padding: 11px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    user-select: none;
+  }
+  details.manual summary::-webkit-details-marker { display: none; }
+  details.manual summary::before {
+    content: "";
+    width: 9px; height: 10px;
+    background: var(--muted);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  details.manual[open] summary::before {
+    background: var(--honey-deep);
+    transform: rotate(90deg);
+  }
+  .manual-body { padding: 2px 13px 14px; }
+ 
+  label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin: 10px 0 5px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 8px 9px;
+    background: var(--paper);
+    color: var(--ink);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--honey-deep);
+    box-shadow: 0 0 0 3px rgba(247, 218, 33, 0.22);
+  }
+ 
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  button {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    padding: 8px 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    box-shadow: none;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  button.secondary:hover { border-color: var(--muted); box-shadow: none; }
+  button:active { transform: translateY(0); }
+ 
+  /* ---------- summary stats ---------- */
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .stat {
+    flex: 1 1 74px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 11px 13px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.14s ease, box-shadow 0.16s ease;
+  }
+  .stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .stat .num {
+    font-family: var(--display);
+    font-size: 25px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  .stat .label {
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  .stat.pangram-open {
+    background:
+      linear-gradient(160deg, rgba(247, 218, 33, 0.20), rgba(247, 218, 33, 0.04));
+    border-color: rgba(234, 179, 8, 0.45);
+    box-shadow: var(--shadow-honey);
+  }
+  .stat.pangram-open .num { color: var(--amber-ink); }
+ 
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  h2.section-title {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2.section-title::before {
+    content: "";
+    width: 9px; height: 10px;
+    flex-shrink: 0;
+    background: linear-gradient(155deg, var(--honey), var(--honey-deep));
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+ 
+  /* ---------- grid table ---------- */
+  table.grid { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.grid th, table.grid td {
+    text-align: center;
+    padding: 6px 3px;
+    border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  table.grid tr:last-child td { border-bottom: none; }
+  table.grid th {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  td.letter-cell { text-align: left; font-weight: 600; }
+  .hex-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 24px;
+    background: var(--paper);
+    border: 1.4px solid var(--ink);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .hex-letter.center {
+    background: linear-gradient(155deg, var(--honey), var(--honey-deep));
+    border-color: var(--honey-deep);
+    color: #1C1810;
+    box-shadow: 0 0 10px -2px rgba(234, 179, 8, 0.6);
+  }
+  td.cell-remaining { font-weight: 600; color: var(--amber-ink); }
+  td.cell-done { color: var(--found); }
+ 
+  /* ---------- two-letter list ---------- */
+  .two-letter-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tl-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 100px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    letter-spacing: 0.01em;
+    transition: border-color 0.14s ease, transform 0.14s ease;
+  }
+  .tl-pill:not(.done):hover { border-color: var(--honey-deep); transform: translateY(-1px); }
+  .tl-pill.done {
+    color: var(--found);
+    text-decoration: line-through;
+    background: transparent;
+    border-color: transparent;
+  }
+ 
+  /* ---------- status + empty ---------- */
+  .status-line { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .status-line.warn {
+    color: var(--warn);
+    font-weight: 500;
+    background: var(--warn-bg);
+    border-radius: var(--r-sm);
+    padding: 6px 9px;
+    margin-top: 10px;
+  }
+  .empty-state {
+    color: var(--muted);
+    font-size: 12.5px;
+    padding: 26px 12px;
+    text-align: center;
+    border: 1px dashed var(--line);
+    border-radius: var(--r-md);
+  }
+ 
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+ 
+  /*
+    ── SHIPPING IN THE EXTENSION ──────────────────────────────────
+    MV3 CSP will block the remote <link> above. Self-host instead:
+    1. Download the two variable woff2 files (Latin subset) from
+       https://gwfh.mranftl.com/fonts/geist  and  /fonts/geist-mono
+    2. Drop them in your extension, e.g. /fonts/
+    3. Delete the <link> tags in <head> and uncomment this block:
+ 
+    @font-face {
+      font-family: "Geist";
+      src: url("fonts/geist-variable.woff2") format("woff2");
+      font-weight: 100 900; font-display: swap;
+    }
+    @font-face {
+      font-family: "Geist Mono";
+      src: url("fonts/geist-mono-variable.woff2") format("woff2");
+      font-weight: 100 900; font-display: swap;
+    }
+ 
+    No manifest change needed for CSS-referenced fonts, but make sure
+    your style-src/font-src CSP allows 'self'.
+    ───────────────────────────────────────────────────────────────
+  */</style>
+</head>
+<body>
+
+<header>
+  <div class="hex-mark"></div>
+  <h1>Spelling Bee Tracker</h1>
+</header>
+
+<div class="panel">
+  <label for="hintInput" style="margin-top:0;">1. Paste today's hints grid (once per puzzle)</label>
+  <textarea id="hintInput" placeholder="E B F L O T U
+
+WORDS: 54, POINTS: 215, PANGRAMS: 1
+..."></textarea>
+  <div class="btn-row">
+    <button id="updateBtn">Use this grid</button>
+    <button class="secondary" id="clearBtn">Clear for new puzzle</button>
+  </div>
+</div>
+
+<div class="live-status">
+  <span class="dot" id="liveDot"></span>
+  <span id="liveText">2. Found words: waiting to spot your puzzle tab…</span>
+  <button class="secondary" id="syncNowBtn">Check now</button>
+</div>
+
+<div id="results">
+  <div class="empty-state">Paste the hints grid above, then play normally in another tab. Found words track automatically.</div>
+</div>
+
+<div class="status-line" id="statusLine"></div>
+
+<details class="manual">
+  <summary>Not detecting your words? Fix it here</summary>
+  <div class="manual-body">
+    <p style="font-size:11px;color:var(--muted);margin:6px 0;">
+      Open DevTools (F12) on the puzzle tab, check the Console for lines starting
+      "[SB Tracker" to see what it's finding. If nothing shows at all even after
+      hitting "Check now" above, paste your found words manually below as a backup.
+    </p>
+    <label for="rawPasteInput">Raw copied words (fixes NYT's copy-paste doubling)</label>
+    <textarea id="rawPasteInput" placeholder="beefbeef
+beetbeet
+..."></textarea>
+    <div class="btn-row"><button id="cleanBtn">Clean up &amp; add</button></div>
+
+    <label for="foundInput">Found words (auto-fills when detection works; editable)</label>
+    <textarea id="foundInput" placeholder="beef, fete, beet ..."></textarea>
+    <div class="btn-row"><button id="applyFoundBtn">Apply</button></div>
+    <div class="status-line" id="cleanStatusLine"></div>
+  </div>
+</details>
+
+<script src="shared-parser.js"></script>
+<script src="sidepanel.js"></script>
+</body>
+</html>

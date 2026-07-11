@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Spelling Bee Tracker",
+  "version": "1.1.0",
+  "description": "Side panel that tracks remaining NYT Spelling Bee words live as you play.",
+  "permissions": ["storage", "sidePanel", "scripting", "tabs"],
+  "host_permissions": ["*://*.nytimes.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.nytimes.com/*"],
+      "all_frames": true,
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Open Spelling Bee Tracker"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
